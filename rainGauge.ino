@@ -5,6 +5,7 @@
 
 const int       LED_PIN        = 0;     // The pin connecting the LED (D3)
 const int       INTERRUPT_PIN  = 14;    // The pin connect the test button (D5)
+const int       RAIN_PIN  = 5;        // The pin connect the tipping bucket sensor (D1)
 volatile double RAIN_HEIGHT   = 0;     // variable for storing the rain_height
 
 volatile byte interrupt = 0;
@@ -20,12 +21,12 @@ void rainInterrupt() {
   Serial.println(RAIN_HEIGHT);
 }
 
-void handleInterrupt() {
+void pushButtonInterrupt() {
   interrupt++;
 }
 
 /* Interrupt timer for sending data to the Readiness.io server */
-void writeToServer(){
+void timerInterrupt(){
   interrupt++;
 }
 
@@ -42,9 +43,13 @@ void setup() {
   Serial.println(WIFI_SSID);
   client.wifiConnection(WIFI_SSID, WIFI_PASS);
 
-  pinMode(INTERRUPT_PIN, INPUT_PULLUP); // Set the interrupt pin for the reed/hall effect
-  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), rainInterrupt, RISING);  // Attach the interrupt.
-  timer.attach(UPDATE_RATE, writeToServer);
+  pinMode(RAIN_PIN, INPUT_PULLUP); // Set the interrupt pin for the reed/hall effect
+  attachInterrupt(digitalPinToInterrupt(RAIN_PIN), rainInterrupt, RISING);  // Attach the interrupt.
+
+  pinMode(INTERRUPT_PIN, INPUT_PULLUP); // Set the interrupt pin for the pushbutton (optional)
+  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), pushButtonInterrupt, RISING);  // Attach the interrupt.
+
+  timer.attach(UPDATE_RATE, timerInterrupt);
 
   client.testConnection();
 }
@@ -53,9 +58,9 @@ void setup() {
 void loop() {
   if(interrupt>0){
     client.publishData(RAIN_HEIGHT);
-    RAIN_HEIGHT = 0;
+    RAIN_HEIGHT = 0;  //reset the rain height
     interrupt=0;
-    digitalWrite(LED_PIN,HIGH);
+    digitalWrite(LED_PIN,HIGH); // LED lights up to indicate that it the data is being transmitted
     delay(250);
     digitalWrite(LED_PIN,LOW);
 
